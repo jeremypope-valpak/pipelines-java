@@ -24,4 +24,10 @@ stages:
             testResultsFiles: '**/surefire-reports/TEST-*.xml'
             goals: 'package'
 
-    
+  - stage: UAT
+    jobs: 
+    - job: UAT
+      pool:
+        name: TSTVWS01
+      steps:
+      - bash: echo "Hello TSTVWS01"
