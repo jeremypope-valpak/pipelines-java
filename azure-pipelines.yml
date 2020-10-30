@@ -26,8 +26,26 @@ stages:
 
   - stage: UAT
     jobs: 
+    - deployment: 
+      condition: and(succeeded(), eq(variables['deploy_uat'], 'true'))
     - job: UAT
       pool:
         vmImage: 'ubuntu-latest'
       steps:
-      - bash: echo "Hello TSTVWS01"
+      - bash: echo "Hello UAT"
+
+  - stage: Prod1
+    jobs: 
+    - job: Prod1
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - bash: echo "Hello Prod1"
+
+  - stage: Prod2
+    jobs: 
+    - job: Prod2
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      - bash: echo "Hello Prod2"
