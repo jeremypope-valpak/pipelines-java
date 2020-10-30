@@ -51,8 +51,12 @@ stages:
     - deployment:  
       environment: Prod2
       condition: and(succeeded(), eq(variables['deploy_prod2'], 'true')) 
-    - job: Prod2
+    
       pool:
         vmImage: 'ubuntu-latest'
-      steps:
-      - bash: echo "Hello Prod2"
+
+      strategy:
+          runOnce:
+              deploy:
+                steps:
+                - bash: echo "Hello Prod2"
