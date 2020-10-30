@@ -36,7 +36,10 @@ stages:
       - bash: echo "Hello UAT"
 
   - stage: Prod1
-    jobs: 
+    jobs:
+    - deployment:  
+      environment: Prod1
+      condition: and(succeeded(), eq(variables['deploy_prod1'], 'true'))
     - job: Prod1
       pool:
         vmImage: 'ubuntu-latest'
@@ -44,7 +47,10 @@ stages:
       - bash: echo "Hello Prod1"
 
   - stage: Prod2
-    jobs: 
+    jobs:
+    - deployment:  
+      environment: Prod2
+      condition: and(succeeded(), eq(variables['deploy_prod2'], 'true')) 
     - job: Prod2
       pool:
         vmImage: 'ubuntu-latest'
