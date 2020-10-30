@@ -28,6 +28,6 @@ stages:
     jobs: 
     - job: UAT
       pool:
-        name: TSTVWS01
+        vmImage: 'ubuntu-latest'
       steps:
       - bash: echo "Hello TSTVWS01"
