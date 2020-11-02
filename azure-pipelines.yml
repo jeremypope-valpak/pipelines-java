@@ -56,15 +56,7 @@ stages:
 
   - stage: Prod2
     jobs:
-    - deployment:  
-      environment: Prod2
-      condition: and(succeeded(), eq(variables['deploy_prod2'], 'true')) 
-    
-      pool:
-        vmImage: 'ubuntu-latest'
-
-      strategy:
-          runOnce:
-              deploy:
-                steps:
-                - bash: echo "Hello Prod2"
+    - template: deployment.yml  # Template reference
+      parameters:
+        name: Prod2
+        vmImage: 'ubuntu-16.04'
