@@ -180,7 +180,7 @@ stages:
       pool: 'TSTVWS01'
 
 
-- stage: Production 1
+- stage: Production1
   dependsOn: Build
 
   jobs:
@@ -194,7 +194,7 @@ stages:
       connectionStringArgs: 'Server=STRSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;'
       pool: 'STRVWS01'
 
-- stage: Production 2
+- stage: Production2
   dependsOn: Build
     
   jobs:
