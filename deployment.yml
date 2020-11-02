@@ -1,12 +1,12 @@
 parameters:
-- name: Env  # defaults for any parameters that aren't specified
+- name: env  # defaults for any parameters that aren't specified
   default: 'UAT'
-- vmImage: pool
+- name: pool
   default: 'None'
     
 jobs:
   - deployment:  
-    environment: ${{ parameters.Env }}
+    environment: ${{ parameters.env }}
   
     pool:
       vmImage: ${{ parameters.pool }}
@@ -15,4 +15,4 @@ jobs:
         runOnce:
             deploy:
               steps:
-              - bash: echo "Hello ${{ parameters.Env }}"
+              - bash: echo "Hello ${{ parameters.env }}"

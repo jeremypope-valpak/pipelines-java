@@ -58,5 +58,5 @@ stages:
     jobs:
     - template: deployment.yml  # Template reference
       parameters:
-        name: Prod2
-        vmImage: 'ubuntu-16.04'
+        env: Prod2
+        pool: 'ubuntu-16.04'
