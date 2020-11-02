@@ -8,8 +8,7 @@ jobs:
   - deployment:  
     environment: ${{ parameters.env }}
   
-    pool:
-      #vmImage: ${{ parameters.pool }}
+    pool:   # vmImage: ${{ parameters.pool }}
       pool: ${{ parameters.pool }}
 
     strategy:

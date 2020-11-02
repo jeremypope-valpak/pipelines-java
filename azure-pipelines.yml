@@ -59,4 +59,4 @@ stages:
     - template: deployment.yml  # Template reference
       parameters:
         env: Prod2
-        pool: 'ubuntu-16.04'
+        pool: 'TSTWS01'
