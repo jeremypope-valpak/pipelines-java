@@ -9,7 +9,8 @@ jobs:
     environment: ${{ parameters.env }}
   
     pool:
-      vmImage: ${{ parameters.pool }}
+      #vmImage: ${{ parameters.pool }}
+      pool: ${{ parameters.pool }}
 
     strategy:
         runOnce:
