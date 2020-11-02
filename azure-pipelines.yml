@@ -184,7 +184,7 @@ stages:
   dependsOn: Build
 
   jobs:
-  - template: deployment.yml  # Template reference
+  - template: deployment.yml
     parameters:
       deploy: '${{ variables.deploy_prod1 }}'
       env: 'Valpak Production 1'
@@ -198,7 +198,7 @@ stages:
   dependsOn: Build
     
   jobs:
-  - template: deployment.yml  # Template reference
+  - template: deployment.yml
     parameters:
       deploy: '${{ variables.deploy_prod2 }}'
       env: 'Valpak Production 2'
