@@ -1,18 +1,273 @@
 parameters:
-- name: env  # defaults for any parameters that aren't specified
-  default: 'UAT'
+- name: deploy
+  default: 'true'
+- name: env
+  default: 'Valpak Test'
+- name: ConnectionString
+  default: 'Server=TSTSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;MultipleActiveResultSets=true'
+- name: BaseAddress0
+  default: 'http://WSEpicMemberService/'
+- name: BaseAddress1
+  default: 'http://WSEpicComplianceFormService/'
+- name: connectionStringArgs
+  default: 'Server=TSTSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;'
 - name: pool
-  default: 'None'
+  default: 'TSTVWS01'
     
 jobs:
   - deployment:  
     environment: ${{ parameters.env }}
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'master'),eq(variables['parameters.deploy'], 'true'))
+    variables:
+      ConnectionString: "${{ parameters.ConnectionString }}"
+      WebServices.0.BaseAddress: "${{ parameters.BaseAddress0 }}"
+      WebServices.1.BaseAddress: "${{ parameters.BaseAddress1 }}"        
+      Serilog.WriteTo.0.Args.connectionString: "${{ parameters.connectionStringArgs }}"
   
-    pool:   # vmImage: ${{ parameters.pool }}
+    pool: 
       pool: ${{ parameters.pool }}
 
     strategy:
         runOnce:
             deploy:
               steps:
-              - bash: echo "Hello ${{ parameters.env }}"
+              - download: none
+              
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  buildType: 'current'
+                  downloadType: 'single'
+                  downloadPath: '$(System.ArtifactsDirectory)'
+                  artifactName: DSFManager
+              
+              # Stop Websites
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Stop Valpak.Websites.Epic.DSFManager
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'StopWebsite'
+                  StartStopWebsiteName: 'Valpak.Websites.Epic.DSFManager'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Stop Valpak.WebServices.Epic.MemberService
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'StopWebsite'
+                  StartStopWebsiteName: 'Valpak.WebServices.Epic.MemberService'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Stop Valpak.WebServices.Epic.ComplianceFormService
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'StopWebsite'
+                  StartStopWebsiteName: 'Valpak.WebServices.Epic.ComplianceFormService'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Stopping App Pool Valpak.Websites.Epic.DSFManager
+                inputs:
+                  IISDeploymentType: 'IISApplicationPool'
+                  ActionIISApplicationPool: 'StopAppPool'
+                  StartStopRecycleAppPoolName: 'Valpak.Websites.Epic.DSFManager'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Stopping App Pool Valpak.WebServices.Epic.MemberService
+                inputs:
+                  IISDeploymentType: 'IISApplicationPool'
+                  ActionIISApplicationPool: 'StopAppPool'
+                  StartStopRecycleAppPoolName: 'Valpak.WebServices.Epic.MemberService'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Stopping App Pool Valpak.WebServices.Epic.ComplianceFormService
+                inputs:
+                  IISDeploymentType: 'IISApplicationPool'
+                  ActionIISApplicationPool: 'StopAppPool'
+                  StartStopRecycleAppPoolName: 'Valpak.WebServices.Epic.ComplianceFormService'
+              
+              # Configure Valpak.WebServices.Epic.MemberService
+              
+              - task: FileTransform@1
+                displayName: MemberService - Replace Connection string and Serilog appsettings
+                inputs:
+                  folderPath: '$(System.ArtifactsDirectory)\DSFManager\Valpak.WebServices.Epic.MemberService.zip'
+                  fileType: 'json'
+                  targetFiles: '**/appsettings.json'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Setup Valpak.WebServices.Epic.MemberService 
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'CreateOrUpdateWebsite'
+                  WebsiteName: 'Valpak.WebServices.Epic.MemberService'
+                  WebsitePhysicalPath: '%SystemDrive%\inetpub\wwwroot\Valpak.WebServices.Epic.MemberService'
+                  WebsitePhysicalPathAuth: 'WebsiteUserPassThrough'
+                  AddBinding: true
+                  Bindings: |
+                       '{
+                         "bindings":[
+                           {
+                             "protocol":"http",
+                             "ipAddress":"All Unassigned",
+                             "port":"80",
+                             "hostname":"WSEpicMemberService",
+                             "sslThumbprint":"",
+                             "sniFlag":false
+                           }
+                         ]
+                        }'
+                  CreateOrUpdateAppPoolForWebsite: true
+                  ConfigureAuthenticationForWebsite: true
+                  AppPoolNameForWebsite: 'Valpak.WebServices.Epic.MemberService'
+                  DotNetVersionForWebsite: 'No Managed Code'
+                  PipeLineModeForWebsite: 'Integrated'
+                  AppPoolIdentityForWebsite: 'SpecificUser'
+                  AppPoolUsernameForWebsite: '$(EpicServiceUser)'
+                  AppPoolPasswordForWebsite: '$(EpicServiceUserPassword)'
+                  AnonymousAuthenticationForWebsite: true
+                  WindowsAuthenticationForWebsite: false
+
+
+              - task: IISWebAppDeploymentOnMachineGroup@0
+                displayName: Deploy Valpak.WebServices.Epic.MemberService
+                inputs:
+                  WebSiteName: 'Valpak.WebServices.Epic.MemberService'
+                  Package: '$(System.ArtifactsDirectory)\DSFManager\Valpak.WebServices.Epic.MemberService.zip'
+                  RemoveAdditionalFilesFlag: true
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Start App Pool Valpak.WebServices.Epic.MemberService
+                inputs:
+                  IISDeploymentType: 'IISApplicationPool'
+                  ActionIISApplicationPool: 'StartAppPool'
+                  StartStopRecycleAppPoolName: 'Valpak.WebServices.Epic.MemberService'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Start Valpak.WebServices.Epic.MemberService
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'StartWebsite'
+                  StartStopWebsiteName: 'Valpak.WebServices.Epic.MemberService'
+
+
+              # Valpak.WebServices.Epic.ComplianceFormService
+              
+              - task: FileTransform@1
+                displayName: ComplianceFormService - Replace Connection string and Serilog appsettings
+                inputs:
+                  folderPath: '$(System.ArtifactsDirectory)\DSFManager\Valpak.WebServices.Epic.ComplianceFormService.zip'
+                  fileType: 'json'
+                  targetFiles: '**/appsettings.json'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Setup Valpak.WebServices.Epic.ComplianceFormService 
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'CreateOrUpdateWebsite'
+                  WebsiteName: 'Valpak.WebServices.Epic.ComplianceFormService'
+                  WebsitePhysicalPath: '%SystemDrive%\inetpub\wwwroot\Valpak.WebServices.Epic.ComplianceFormService'
+                  WebsitePhysicalPathAuth: 'WebsiteUserPassThrough'
+                  AddBinding: true
+                  Bindings: |
+                       '{
+                         "bindings":[
+                           {
+                             "protocol":"http",
+                             "ipAddress":"All Unassigned",
+                             "port":"80",
+                             "hostname":"WSEpicComplianceFormService",
+                             "sslThumbprint":"",
+                             "sniFlag":false
+                           }
+                         ]
+                        }'
+                  CreateOrUpdateAppPoolForWebsite: true
+                  ConfigureAuthenticationForWebsite: true
+                  AppPoolNameForWebsite: 'Valpak.WebServices.Epic.ComplianceFormService'
+                  DotNetVersionForWebsite: 'No Managed Code'
+                  PipeLineModeForWebsite: 'Integrated'
+                  AppPoolIdentityForWebsite: 'SpecificUser'
+                  AppPoolUsernameForWebsite: '$(EpicServiceUser)'
+                  AppPoolPasswordForWebsite: '$(EpicServiceUserPassword)'
+                  AnonymousAuthenticationForWebsite: true
+                  WindowsAuthenticationForWebsite: false
+
+              - task: IISWebAppDeploymentOnMachineGroup@0
+                displayName: Deploy Valpak.WebServices.Epic.ComplianceFormService
+                inputs:
+                  WebSiteName: 'Valpak.WebServices.Epic.ComplianceFormService'
+                  Package: '$(System.ArtifactsDirectory)\DSFManager\Valpak.WebServices.Epic.ComplianceFormService.zip'
+                  RemoveAdditionalFilesFlag: true
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Start App Pool Valpak.WebServices.Epic.ComplianceFormService
+                inputs:
+                  IISDeploymentType: 'IISApplicationPool'
+                  ActionIISApplicationPool: 'StartAppPool'
+                  StartStopRecycleAppPoolName: 'Valpak.WebServices.Epic.ComplianceFormService'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Start Valpak.WebServices.Epic.ComplianceFormService
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'StartWebsite'
+                  StartStopWebsiteName: 'Valpak.WebServices.Epic.ComplianceFormService'
+
+              # DSFManager
+              
+              - task: FileTransform@1
+                displayName: DSF Manager - Replace Connection string and Serilog appsettings
+                inputs:
+                  folderPath: '$(System.ArtifactsDirectory)\DSFManager\Valpak.Websites.Epic.DSFManager.zip'
+                  fileType: 'json'
+                  targetFiles: '**/appsettings.json'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Setup Valpak.Websites.Epic.DSFManager 
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'CreateOrUpdateWebsite'
+                  WebsiteName: 'Valpak.Websites.Epic.DSFManager'
+                  WebsitePhysicalPath: '%SystemDrive%\inetpub\wwwroot\Valpak.Websites.Epic.DSFManager'
+                  WebsitePhysicalPathAuth: 'WebsiteUserPassThrough'
+                  AddBinding: true
+                  Bindings: |
+                    '{
+                      "bindings":[
+                        {
+                          "protocol":"http",
+                          "ipAddress":"All Unassigned",
+                          "port":"80",
+                          "hostname":"EpicDsfManager",
+                          "sslThumbprint":"",
+                          "sniFlag":false
+                        }
+                      ]
+                     }'
+                  CreateOrUpdateAppPoolForWebsite: true
+                  ConfigureAuthenticationForWebsite: true
+                  AppPoolNameForWebsite: 'Valpak.Websites.Epic.DSFManager'
+                  DotNetVersionForWebsite: 'No Managed Code'
+                  PipeLineModeForWebsite: 'Integrated'
+                  AppPoolIdentityForWebsite: 'SpecificUser'
+                  AppPoolUsernameForWebsite: '$(EpicServiceUser)'
+                  AppPoolPasswordForWebsite: '$(EpicServiceUserPassword)'
+
+              - task: IISWebAppDeploymentOnMachineGroup@0
+                displayName: Deploy Valpak.Websites.Epic.DSFManager.zip
+                inputs:
+                  WebSiteName: 'Valpak.Websites.Epic.DSFManager'
+                  Package: '$(System.ArtifactsDirectory)\DSFManager\Valpak.Websites.Epic.DSFManager.zip'
+                  RemoveAdditionalFilesFlag: true
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Start App Pool Valpak.Websites.Epic.DSFManager
+                inputs:
+                  IISDeploymentType: 'IISApplicationPool'
+                  ActionIISApplicationPool: 'StartAppPool'
+                  StartStopRecycleAppPoolName: 'Valpak.Websites.Epic.DSFManager'
+
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: Start Valpak.Websites.Epic.DSFManager
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'StartWebsite'
+                  StartStopWebsiteName: 'Valpak.Websites.Epic.DSFManager'

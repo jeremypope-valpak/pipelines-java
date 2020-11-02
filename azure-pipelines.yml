@@ -1,62 +1,209 @@
-# Maven
-# Build your Java project and run tests with Apache Maven.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/java
-
 trigger:
-- master
+  batch: true
+  branches:
+      include:
+      - master
+      - Sprint/*
+      - sprint/*
+      - environment/test
+pr:
+  - master
+  - sprint/*
+  - Sprint/*
+  - environment/test
+
 
 stages:
-#  - stage: Build
-#    jobs:
-#    - job: Build
-#      pool:
-#        vmImage: 'ubuntu-latest'
-#      steps:
-#        - task: Maven@3
-#          inputs:
-#            mavenPomFile: 'pom.xml'
-#            mavenOptions: '-Xmx3072m'
-#            javaHomeOption: 'JDKVersion'
-#            jdkVersionOption: '1.8'
-#            jdkArchitectureOption: 'x64'
-#            publishJUnitResults: true
-#            testResultsFiles: '**/surefire-reports/TEST-*.xml'
-#            goals: 'package'
 
-#  - stage: UAT
-#    jobs: 
-#    - deployment:  
-#      environment: UAT
-#      condition: and(succeeded(), eq(variables['deploy_uat'], 'true')) 
-#    
-#      pool:
-#        vmImage: 'ubuntu-latest'
+- stage: Build
+  
+jobs:
+- job: Build
 
-#      strategy:
-#          runOnce:
-#              deploy:
-#                steps:
-#                - bash: echo "Hello UAT"
+  pool:
+    name: Hosted VS2017
+    demands:
+    - msbuild
+    - visualstudio
 
-#  - stage: Prod1
-#    jobs:
-#    - deployment:  
-#      environment: Prod1
-#      condition: and(succeeded(), eq(variables['deploy_prod1'], 'true')) 
+  variables:
+    BuildPlatform: 'Any CPU'
+    NugetVersion: '5.1.0'
+    BuildConfiguration: 'Release'
+
+  steps:
+  - task: NuGetToolInstaller@0
+    displayName: 'Install NuGet $(NugetVersion)'
+    inputs:
+      versionSpec: $(NugetVersion)
+
+  # Restore packages
+  - task: NuGetCommand@2
+    displayName: Restore Valpak.WebServices.Epic.MemberService
+    inputs:
+      command: 'restore'
+      restoreSolution: '**/Valpak.WebServices.Epic.MemberService/Valpak.WebServices.Epic.MemberService.csproj'
+      feedsToUse: 'select'
+      vstsFeed: 'ad01542d-c73d-4a36-8d00-a76b04c950af'
+
+  - task: NuGetCommand@2
+    displayName: Restore Valpak.WebServices.Epic.MemberService.Test
+    inputs:
+      command: 'restore'
+      restoreSolution: '**/Valpak.WebServices.Epic.MemberService.Test/Valpak.WebServices.Epic.MemberService.Test.csproj'
+      feedsToUse: 'select'
+      vstsFeed: 'ad01542d-c73d-4a36-8d00-a76b04c950af'
+
+  - task: NuGetCommand@2
+    displayName: Restore Valpak.WebServices.Epic.ComplianceFormService
+    inputs:
+      command: 'restore'
+      restoreSolution: '**/Valpak.WebServices.Epic.ComplianceFormService/Valpak.WebServices.Epic.ComplianceFormService.csproj'
+      feedsToUse: 'select'
+      vstsFeed: 'ad01542d-c73d-4a36-8d00-a76b04c950af'
+
+  - task: NuGetCommand@2
+    displayName: Restore Valpak.WebServices.Epic.ComplianceFormService.Test
+    inputs:
+      command: 'restore'
+      restoreSolution: '**/Valpak.WebServices.Epic.ComplianceFormService.Test/Valpak.WebServices.Epic.ComplianceFormService.Test.csproj'
+      feedsToUse: 'select'
+      vstsFeed: 'ad01542d-c73d-4a36-8d00-a76b04c950af'
+  
+  - task: NuGetCommand@2
+    displayName: Restore Valpak.Websites.Epic.DSFManager
+    inputs:
+      command: 'restore'
+      restoreSolution: '**/Valpak.Websites.Epic.DSFManager/Valpak.Websites.Epic.DSFManager.csproj'
+      feedsToUse: 'config'
+      nugetConfigPath: '$(Build.SourcesDirectory)'
+      externalFeedCredentials: 'Telerik Controls'
+
+  - task: NuGetCommand@2
+    displayName: Restore Valpak.Websites.Epic.DSFManager.Test
+    inputs:
+      command: 'restore'
+      restoreSolution: '**/Valpak.Websites.Epic.DSFManager.Test/Valpak.Websites.Epic.DSFManager.Test.csproj'
+      feedsToUse: 'config'
+      nugetConfigPath: '$(Build.SourcesDirectory)'
+      externalFeedCredentials: 'Telerik Controls'
+
+  # Build Projects
+  - task: DotNetCoreCLI@2
+    displayName: Build - Valpak.WebServices.Epic.MemberService
+    inputs:
+      command: 'build'
+      projects: '**/Valpak.WebServices.Epic.MemberService/Valpak.WebServices.Epic.MemberService.csproj'
+      arguments: '-c $(BuildConfiguration)'
+
+  - task: DotNetCoreCLI@2
+    displayName: Build - Valpak.WebServices.Epic.ComplianceFormService
+    inputs:
+      command: 'build'
+      projects: '**/Valpak.WebServices.Epic.ComplianceFormService/Valpak.WebServices.Epic.ComplianceFormService.csproj'
+      arguments: '-c $(BuildConfiguration)'
+
+  - task: DotNetCoreCLI@2
+    displayName: Build - Valpak.Websites.Epic.DSFManager
+    inputs:
+      command: 'build'
+      projects: '**/Valpak.Websites.Epic.DSFManager/Valpak.Websites.Epic.DSFManager.csproj'
+      arguments: '-c $(BuildConfiguration)'
+
+
+  - task: DotNetCoreCLI@2
+    displayName: Build - Valpak.WebServices.Epic.MemberService.Test
+    inputs:
+      command: 'build'
+      projects: '**/Valpak.WebServices.Epic.MemberService.Test/Valpak.WebServices.Epic.MemberService.Test.csproj'
+      arguments: '-c $(BuildConfiguration)'
+
+  - task: DotNetCoreCLI@2
+    displayName: Build - Valpak.WebServices.Epic.ComplianceFormService.Test
+    inputs:
+      command: 'build'
+      projects: '**/Valpak.WebServices.Epic.ComplianceFormService.Test/Valpak.WebServices.Epic.ComplianceFormService.Test.csproj'
+      arguments: '-c $(BuildConfiguration)'
+
+  - task: DotNetCoreCLI@2
+    displayName: Build - Valpak.Websites.Epic.DSFManager.Test
+    inputs:
+      command: 'build'
+      projects: '**/Valpak.Websites.Epic.DSFManager.Test/Valpak.Websites.Epic.DSFManager.Test.csproj'
+      arguments: '-c $(BuildConfiguration)'
+
+  # Test
+  - task: VSTest@2
+    inputs:
+      testSelector: 'testAssemblies'
+      codeCoverageEnabled: true
+      testAssemblyVer2: |
+        **\*test*.dll
+        !**\*TestAdapter.dll
+        !**\obj\**
+      searchFolder: '$(System.DefaultWorkingDirectory)'
+
+
+  # Pack Artifacts
+
+  - task: WhiteSource Bolt@19
+    continueOnError: true
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish Web Packages
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      projects: '**/Valpak.Web*/*.csproj'
+      modifyOutputPath: true
+      zipAfterPublish: true
+      arguments: '-c $(BuildConfiguration -o $(Build.ArtifactStagingDirectory)'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'DSFManager'
+      publishLocation: 'Container'
+
+- stage: UAT
+  dependsOn: Build
+
+  jobs:
+  - template: deployment.yml  # Template reference
+    parameters:
+      deploy: '${{ variables.deploy_uat }}'
+      env: 'Valpak Test'
+      ConnectionString: 'Server=TSTSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;MultipleActiveResultSets=true'
+      BaseAddress0: 'http://WSEpicMemberService/'
+      BaseAddress1: 'http://WSEpicComplianceFormService/'
+      connectionStringArgs: 'Server=TSTSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;'
+      pool: 'TSTVWS01'
+
+
+- stage: Production 1
+  dependsOn: Build
+
+  jobs:
+  - template: deployment.yml  # Template reference
+    parameters:
+      deploy: '${{ variables.deploy_prod1 }}'
+      env: 'Valpak Production 1'
+      ConnectionString: 'Server=STRSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;MultipleActiveResultSets=true'
+      BaseAddress0: 'http://WSEpicMemberService/'
+      BaseAddress1: 'http://WSEpicComplianceFormService/'
+      connectionStringArgs: 'Server=STRSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;'
+      pool: 'STRVWS01'
+
+- stage: Production 2
+  dependsOn: Build
     
-#      pool:
-#        vmImage: 'ubuntu-latest'
-
-#      strategy:
-#          runOnce:
-#              deploy:
-#                steps:
-#                - bash: echo "Hello Prod1"
-
-  - stage: Prod2
-    jobs:
-    - template: deployment.yml  # Template reference
-      parameters:
-        env: Prod2
-        pool: 'TSTWS01'
+  jobs:
+  - template: deployment.yml  # Template reference
+    parameters:
+      deploy: '${{ variables.deploy_prod2 }}'
+      env: 'Valpak Production 2'
+      ConnectionString: 'Server=STRSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;MultipleActiveResultSets=true'
+      BaseAddress0: 'http://WSEpicMemberService/'
+      BaseAddress1: 'http://WSEpicComplianceFormService/'
+      connectionStringArgs: 'Server=STRSQL14\\SQL14;Database=Valpak.Epic.Common;Trusted_Connection=True;'
+      pool: 'STRVWS02'
