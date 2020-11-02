@@ -1,12 +1,12 @@
 parameters:
-    - name: UAT  # defaults for any parameters that aren't specified
-      default: ''
-    - name: pool
-      default: 'ubuntu-latest'
+- name: Env  # defaults for any parameters that aren't specified
+  default: 'UAT'
+- vmImage: pool
+  default: 'None'
     
 jobs:
   - deployment:  
-    environment: ${{ parameters.pool }}
+    environment: ${{ parameters.Env }}
   
     pool:
       vmImage: ${{ parameters.pool }}
@@ -15,4 +15,4 @@ jobs:
         runOnce:
             deploy:
               steps:
-              - bash: echo "Hello ${{ parameters.pool }}"
+              - bash: echo "Hello ${{ parameters.Env }}"
